@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { application, details, kes } from '../data/application';
-import { navigate, viewMemory } from '../navigation';
-import { initialPayment, STEPS, currentStep, selectedPlan, useReview, type Step } from '../state/review';
-import { Copy, FileText, ListChecks, NotebookPen } from 'lucide-react';
+import { navigate, viewMemory, type Route } from '../navigation';
+import { initialPayment, purchaseMode, STEPS, currentStep, selectedPlan, useReview, type Step } from '../state/review';
+import { FileText, ListChecks, NotebookPen } from 'lucide-react';
 import { MoosShell } from './MoosShell';
-import { CheckCircle, Chip } from './ui';
+import { CheckCircle, Chip, CopyButton } from './ui';
 
 const stepMeta: Record<Step, { label: string; hint: string }> = {
   verify: { label: 'Verify', hint: 'Documents and risk' },
@@ -91,6 +91,12 @@ function ViewToggle({ view }: { view: 'flow' | 'details' }) {
   );
 }
 
+function PurchaseModeChip() {
+  const { state } = useReview();
+  const mode = purchaseMode(state);
+  return <Chip tone={mode === 'Cash' ? 'amber' : 'neutral'}>{mode === 'Cash' ? 'Cash (converted from loan)' : 'Loan'}</Chip>;
+}
+
 export function ApplicationLayout({ step, view = 'flow', children }: { step?: Step; view?: 'flow' | 'details'; children: ReactNode }) {
   const { customer, product } = application;
   if (view === 'flow' && step) viewMemory.flowStep = step;
@@ -110,7 +116,7 @@ export function ApplicationLayout({ step, view = 'flow', children }: { step?: St
                 <h1 className="text-2xl font-bold">{customer.name}</h1>
                 <Chip tone="green">{customer.loanType}</Chip>
                 <Chip tone="blue">{customer.saleType}</Chip>
-                <Chip>{customer.purchaseMode}</Chip>
+                <PurchaseModeChip />
               </div>
               <p className="text-sm text-gray-600">
                 {product.name} · submitted {customer.submitted} by {customer.salesAgent}
@@ -254,7 +260,7 @@ export function ContextRail() {
   );
 }
 
-export function StepFooter({ back, children }: { back?: { label: string; to: Step }; children: ReactNode }) {
+export function StepFooter({ back, children }: { back?: { label: string; to: Route }; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-5 py-4">
       {back ? (
@@ -269,7 +275,7 @@ export function StepFooter({ back, children }: { back?: { label: string; to: Ste
   );
 }
 
-function Row({ label, value, check }: { label: string; value: ReactNode; check?: boolean | null }) {
+function Row({ label, value, check, copy }: { label: string; value: ReactNode; check?: boolean | null; copy?: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-gray-100 py-1.5 last:border-b-0">
       <dt className="text-gray-600">{label}</dt>
@@ -277,6 +283,7 @@ function Row({ label, value, check }: { label: string; value: ReactNode; check?:
         {value}
         {check === true && <span className="text-xs font-semibold text-green-800">✓ matches</span>}
         {check === false && <span className="text-xs font-semibold text-red-800">✗ differs</span>}
+        {copy && <CopyButton value={copy} label={label} size="sm" />}
       </dd>
     </div>
   );
@@ -297,17 +304,14 @@ function CallRail() {
       <RailSection title="Customer on the call">
         <div className="flex items-center justify-between gap-2">
           <span className="text-base font-bold">{customer.name}</span>
-          <button
-            type="button"
-            onClick={() => navigator.clipboard?.writeText(customer.phone)}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <Copy className="h-3 w-3" aria-hidden="true" />
-            {customer.phone}
-          </button>
+          <CopyButton value={customer.name} label="customer name" size="sm" />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold">{customer.phone}</span>
+          <CopyButton value={customer.phone} label="phone number" size="sm" />
         </div>
         <dl className="text-sm">
-          <Row label="National ID" value={customer.idNumber} check={idCheck} />
+          <Row label="National ID" value={customer.idNumber} check={idCheck} copy={customer.idNumber} />
           <Row label="Name on record" value={customer.name} check={nameCheck} />
           <Row label="Email" value={customer.email} />
           <Row label="M-Pesa on WhatsApp" value="Yes" />

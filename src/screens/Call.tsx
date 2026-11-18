@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { ApplicationLayout, StepFooter } from '../components/layout';
-import { Button, CheckCircle, ChoiceCards, Segmented, SelectField, TextArea, TextField } from '../components/ui';
+import { Button, CheckCircle, ChoiceCards, MockPanel, Segmented, SelectField, TextArea, TextField } from '../components/ui';
 import { application, kes } from '../data/application';
 import { navigate } from '../navigation';
-import { initialPayment, selectedPlan, useReview, type CallAnswers, type CallOutcome } from '../state/review';
+import { callAttempts, initialPayment, selectedPlan, startCallBack, useReview, type CallAnswers, type CallOutcome } from '../state/review';
 
 const YES_NO = [
   { value: 'Yes', label: 'Yes' },
@@ -77,6 +77,53 @@ function requiredFields(c: CallAnswers): Field[] {
   return fields;
 }
 
+function tomorrow() {
+  const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function fullCall(): Partial<CallAnswers> {
+  return {
+    proceed: 'Yes',
+    idNumber: application.customer.idNumber,
+    fullName: application.customer.name,
+    otherPhone: 'No',
+    dataConsent: 'Yes',
+    location: 'Nairobi',
+    payer: 'The customer, the full loan',
+    mpesaAsked: MPESA_QUESTIONS.slice(0, 3),
+    mpesaSatisfactory: 'Yes',
+    offerConfirmed: 'Yes',
+    primaryUse: 'Personal use',
+    income: 'Salaried / formal employment',
+    renewedAware: 'Aware',
+    terms: 'I agree',
+    hospicash: 'Yes',
+    homeLocation: 'Kilimani, Argwings Kodhek Road, Elgon Court, block B',
+    pickupPlace: 'Mophones shop',
+    pickupDate: tomorrow(),
+    pickupTime: '10am – 1pm',
+    understanding: 'Good: fully aware of pricing and terms',
+  };
+}
+
+const callPresets: { label: string; answers: () => Partial<CallAnswers> }[] = [
+  { label: 'Reached, ready for decision', answers: () => ({ ...fullCall(), outcome: 'reached', notes: 'Customer confirmed everything, no concerns.' }) },
+  {
+    label: 'Not reached, call back tomorrow',
+    answers: () => ({ proceed: 'Not reached', outcome: 'callback', callbackDate: tomorrow(), callbackTime: '10:00', notes: 'Phone rang out twice.' }),
+  },
+  {
+    label: 'Asked to call later',
+    answers: () => ({ proceed: 'Call later', outcome: 'callback', callbackDate: tomorrow(), callbackTime: '15:00', notes: 'Customer was driving, asked for a call in the afternoon.' }),
+  },
+  { label: 'Not ready for a loan', answers: () => ({ proceed: 'Not ready', outcome: 'ended', endReason: 'Not ready', notes: 'Customer wants to save up first.' }) },
+  {
+    label: 'Full call, not on terms',
+    answers: () => ({ ...fullCall(), terms: 'Not on terms', outcome: 'ended', endReason: 'Not on terms', notes: 'Customer did not accept the repayment terms.' }),
+  },
+];
+
 function Section({ number, title, done, children }: { number: number; title: string; done: boolean; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
@@ -124,6 +171,11 @@ export function Call() {
     { value: 'ended', label: 'Customer cannot go ahead', help: 'Not ready, not on terms, no consent, out of zone or impersonation' },
   ];
 
+  const fillCall = (answers: Partial<CallAnswers>) => {
+    update((s) => ({ ...s, call: { ...s.call, ...answers } }));
+    setShowErrors(false);
+  };
+
   const save = () => {
     if (missing.length > 0) {
       setShowErrors(true);
@@ -132,7 +184,7 @@ export function Call() {
     if (c.outcome === 'callback') {
       update((s) => ({ ...s, outcome: 'callback' }));
       addLog(`Call back scheduled for ${c.callbackDate} ${c.callbackTime}`);
-      navigate('queue');
+      navigate('details', 'call');
       return;
     }
     if (c.outcome === 'ended') {
@@ -149,21 +201,40 @@ export function Call() {
   return (
     <ApplicationLayout step="call">
       {state.outcome === 'callback' && (
-        <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-          Call back due {c.callbackDate} {c.callbackTime}. The answers from the last call are kept below.
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[15px] font-bold">
+              Call back due {c.callbackDate} {c.callbackTime}
+            </span>
+            <span className="text-sm">The answers from the last call are kept. Starting the call back asks "May I proceed?" again and needs a new outcome.</span>
+          </div>
+          <Button onClick={() => update(startCallBack)}>Start call back</Button>
+        </div>
+      )}
+      {state.outcome !== 'callback' && callAttempts(state) > 1 && (
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+          Attempt {callAttempts(state)}. Answers from earlier attempts are filled in; check them with the customer.
         </div>
       )}
 
       <section className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4">
         <div className="flex flex-[1_1_260px] flex-col gap-1">
           <span className="text-xs font-semibold text-gray-600">Call the customer</span>
-          <span className="text-xl font-bold">{customer.phone}</span>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span className="text-xl font-bold">{customer.phone}</span>
+            <span className="text-lg font-semibold">{customer.name}</span>
+          </div>
           <span className="text-sm text-gray-600">Short script: next of kin already gave consent, no next-of-kin call needed</span>
         </div>
-        <Button variant="secondary" onClick={() => navigator.clipboard?.writeText(customer.phone)}>
-          Copy number
-        </Button>
       </section>
+
+      <MockPanel note="Fills the call form for the outcome you pick, so you don't have to answer every question. Review it, then save.">
+        {callPresets.map((p) => (
+          <Button key={p.label} variant="secondary" onClick={() => fillCall(p.answers())}>
+            {p.label}
+          </Button>
+        ))}
+      </MockPanel>
 
       <Section number={1} title="Introduction and identity" done={filled('proceed') && (!reached || filled('idNumber', 'fullName', 'otherPhone'))}>
         <Script>

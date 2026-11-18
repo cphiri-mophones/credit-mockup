@@ -20,11 +20,21 @@ In the Credit menu, **Credit work** (marked NEW) replaces Scoring, Calling and D
 | Screen | Route | What it shows |
 | --- | --- | --- |
 | Credit work | `#/queue` | One queue replacing the Scoring, Calling and Decisioning queues, with Mine, Call backs due, Waiting on system and Closed |
-| 1. Verify | `#/verify` | Documents and next of kin marked Valid or Invalid in one list, send back to the sales agent; a collapsed Risk section where the final risk score is optional (the system CRB score stands unless overridden) |
+
+### Queue columns
+
+The queue brings back the columns credit staff used on the old Scoring, Calling and Decisioning lists. **Columns** (top right of the list) shows or hides each one, and **Reset to default** restores the set below. Applicant and the ⋯ menu always show. Clicking a row (or the applicant's name) opens the application at its current step; the ⋯ menu, pinned to the right edge so it never needs a sideways scroll, has Open application and View details.
+
+| Shown by default | Hidden by default |
+|---|---|
+| ID number, Phone, Type, Stage, Next action, Call status, Fate Guide, FPM, Time in queue | Device, Location, Channel type, Seller, Sales agent, Submitted, Owner |
+
+The choice is saved per user. The mockup keeps it in the browser (`credit-review-mockup:queue-columns:<user>`), and **Reset mockup** leaves it alone. In Mo.OS it should use the per-user saved views the Applications explorer already has (`view_config.columns`), so it follows the person across devices. NOK Call Status from the old lists is left out: the old form never filled it, so it was always blank. Sample rows' values are illustrative; Jeff Clooney's FPM band was not seen in Mo.OS, so it shows a dash.
+| 1. Verify | `#/verify` | Documents and next of kin marked Valid or Invalid in one list; click a document to open it in a viewer (statement analysis for M-Pesa, checks and consent for next of kin) with Valid / Invalid and Previous / Next; send back to the sales agent; a collapsed Risk section where the final risk score is optional (the system CRB score stands unless overridden) |
 | 2. Offer | `#/offer` | Device, deposit, plan and initial weeks picked once, checked against the Fate Guide limit, with one upfront figure |
 | 3. Call | `#/call` | Script filled with the real offer, ID and name checked against the record, required fields listed on save, call outcome (decide, call back, cannot go ahead) |
-| 4. Decide | `#/decide` | Summary with Edit links, approve loan, cash offer or reject in one place |
-| 5. Activate | `#/activate` | Order creation, payment and payer, hand-over code and ID photos, device lock, then activate |
+| 4. Decide | `#/decide` | Summary with Edit links, approve loan, cash offer or reject in one place. Approving a cash offer warns that it converts the application to a cash application |
+| 5. Activate | `#/activate` | Order creation, payment and payer, hand-over code and ID photos, then activate. The device lock is shown for information only: ops locks it at enrolment and activation unlocks it |
 
 The context panel on the right (customer, Fate Guide, CRB, checks, next of kin, activity) stays on every step except Call. On Call it is replaced by a cross-check panel that stays in view while the agent scrolls the script: the customer (with live ticks as the ID and name are typed), the offer to read out, next of kin, M-Pesa cross-check, credit and what the sales agent submitted.
 
@@ -35,9 +45,30 @@ A button at the top right of the application's title bar switches between two vi
 - **Credit flow**: the five steps above, for working the application.
 - **Application details** (`#/details/<tab>`): everything about the application in tabs, read-only, covering what the old Mo.OS detail page showed plus what the flow has captured so far: Overview, Validation checks (with next-of-kin consent), KYC documents, Pre-screening, Product and offer, CRB, Risk assessment, Credit call, Decision and activation, Audit trail, Notes and Raw details. Each tab that is filled in by a step has an "Edit in the flow" link back to that step.
 
-Switching back and forth returns to the step or tab you were on. **Add Note** in the header opens the Notes tab. The queue row has a **Details** link next to **Open**.
+Switching back and forth returns to the step or tab you were on. **Add Note** in the header opens the Notes tab. The queue row's ⋯ menu has **View details** next to **Open application**.
 
-On the Activate screen, the dashed **Mock only** panel stands in for things that happen outside Mo.OS: the customer's payment, a different payer, the rider's hand-over, the device locking, and an order that fails to create. Order and sale creation finish on their own after a few seconds.
+Actions that take the application off your desk land on the matching details tab rather than the queue, with a banner saying what happened and a link back to Credit work: a call back goes to Credit call, a rejection to Decision and activation, and sending back to the agent to KYC documents. A call back is restarted with **Start call back** on the Call step or the Credit call tab: earlier answers are kept, while "May I proceed?" and the outcome are cleared for the new attempt, which is numbered and logged.
+
+On the Call screen, the dashed **Mock only** panel fills the whole call form for an outcome you pick: reached and ready for a decision, not reached with a call back tomorrow, asked to call later, not ready for a loan, or a full call where the customer is not on terms. It only fills the answers; you still save the call yourself.
+
+On the Activate screen, the dashed **Mock only** panel stands in for things that happen outside Mo.OS: the customer's payment, a different payer, the rider's hand-over, and an order that fails to create. Order and sale creation finish on their own after a few seconds.
+
+## Activating as loan or cash
+
+A loan application can be activated as a loan or, if the customer paid the full price, as a cash sale. Once a cash offer is approved in Decide the application becomes a cash application (the header chip reads "Cash (converted from loan)") and can only be activated as a cash sale.
+
+## Hand-over photos
+
+On both activation steps the Hand-over card shows the rider's photos of the customer's ID (front and back) once the delivery is done, each with a rider and time stamp. In the loan flow, the ID front and back from Verify sit below them for comparison. Every photo is an illustration watermarked SAMPLE and opens full size on click, with Previous and Next.
+
+## Cash applications
+
+Cash applications skip scoring, the credit call and the decision. In the queue they show with a Cash chip (the sample is Grace Atieno, a fictional customer) and have two steps:
+
+1. **Device** (`#/cash-device`): search and pick the phone; out-of-stock devices are disabled. The cash price is the amount to collect. Continuing creates the order and delivery, after which the device choice is fixed; changing it means ops cancels the order first. Only the S23 Ultra price was seen in Mo.OS; the others are illustrative.
+2. **Activate** (`#/cash-activate`): waits for the order, then checks payment in full, the payer (a different payer needs a confirmation tick), the hand-over code and the IMEI. "Complete cash sale" unlocks only when all pass. A short payment shows the balance still due. Once the rider hands over, the rider's ID photos (front and back) appear; click one to open it full size. The Mock only panel simulates paying in full, paying short, someone else paying, the rider hand-over and an order-creation failure.
+
+"View application details" switches to `#/cash-details/<tab>`: Overview (with progress), Device and payment, Audit trail, Notes and Raw details.
 
 ## Proposals built into the mockup
 
@@ -46,7 +77,9 @@ These differ from the current flow and need a decision before building:
 - One owner from claim to activation, one queue with a Stage column.
 - The customer gets one SMS at the decision, not one per credit-status change.
 - Reject sits next to Approve in Decide, not behind a separate Update Credit Status button.
-- Activate stays disabled until payment, payer, hand-over code and device lock are all in. A different payer needs an explicit confirmation.
+- Activate stays disabled until payment, payer and hand-over code are all in. A different payer needs an explicit confirmation.
 - The upfront amount is deposit + initial weeks × weekly instalment, and the same figure appears on the Offer, the call script and Activate. Confirm this formula with pricing: in the walkthrough the real order asked for KES 41,199 while the call quoted a KES 19,899 deposit.
+
+The KYC documents (ID front and back, selfie, M-Pesa statement, next of kin) are illustrated sample images drawn in `src/components/SampleDocs.tsx`, watermarked SAMPLE.
 
 Figures for MoSaver and MoStandard 25 were not seen in Mo.OS, so those plans show "Figures not in the mock data".

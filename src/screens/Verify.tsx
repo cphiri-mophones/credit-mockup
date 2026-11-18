@@ -1,8 +1,10 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { DocumentViewer, ValidityToggle } from '../components/DocumentViewer';
+import { DocumentImage } from '../components/SampleDocs';
 import { ApplicationLayout, StepFooter } from '../components/layout';
 import { Button, Card, SelectField } from '../components/ui';
-import { application, documents } from '../data/application';
+import { application, documents, type DocId } from '../data/application';
 import { navigate } from '../navigation';
 import { finalRiskScore, useReview, type Validity } from '../state/review';
 
@@ -12,6 +14,7 @@ export function Verify() {
   const anyInvalid = documents.some((d) => state.docs[d.id] === 'invalid');
   const ready = marked === documents.length && !anyInvalid;
   const [riskOpen, setRiskOpen] = useState(false);
+  const [viewing, setViewing] = useState<DocId | null>(null);
   const sentBack = state.outcome === 'sent-back';
 
   const setDoc = (id: (typeof documents)[number]['id'], v: Validity) => update((s) => ({ ...s, docs: { ...s.docs, [id]: v } }));
@@ -33,38 +36,27 @@ export function Verify() {
         </div>
       )}
 
-      <Card title="Documents and next of kin" description="Mark each item. Every choice saves as you go." actions={<span className="text-sm font-semibold text-gray-700">{marked} of {documents.length} marked</span>}>
+      <Card title="Documents and next of kin" description="Click a document to open it. Every choice saves as you go." actions={<span className="text-sm font-semibold text-gray-700">{marked} of {documents.length} marked</span>}>
         <ul className="-mx-5 flex flex-col">
           {documents.map((d) => {
             const v = state.docs[d.id];
             return (
               <li key={d.id} className="flex flex-wrap items-center gap-4 border-t border-gray-100 px-5 py-3.5">
-                <div aria-hidden="true" className="flex h-14 w-14 flex-none items-center justify-center rounded-lg bg-gray-200 text-xs font-bold text-gray-700">
-                  {d.thumb}
-                </div>
-                <div className="flex flex-[1_1_220px] flex-col">
-                  <span className="text-[15px] font-semibold">{d.name}</span>
-                  <span className="text-sm text-gray-600">{d.meta}</span>
-                </div>
-                <Button variant="ghost">{d.id === 'mpesa' ? 'View analysis' : 'View'}</Button>
-                <div role="group" aria-label={`${d.name} validity`} className="flex overflow-hidden rounded-lg border border-gray-300">
-                  <button
-                    type="button"
-                    aria-pressed={v === 'valid'}
-                    onClick={() => setDoc(d.id, 'valid')}
-                    className={`min-h-11 px-4 text-sm font-semibold ${v === 'valid' ? 'bg-green-800 text-white' : 'bg-white text-gray-700'}`}
-                  >
-                    Valid
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={v === 'invalid'}
-                    onClick={() => setDoc(d.id, 'invalid')}
-                    className={`min-h-11 border-l border-gray-300 px-4 text-sm font-semibold ${v === 'invalid' ? 'bg-red-800 text-white' : 'bg-white text-gray-700'}`}
-                  >
-                    Invalid
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewing(d.id)}
+                  aria-label={`Open ${d.name}`}
+                  className="group flex flex-[1_1_260px] items-center gap-4 rounded-lg text-left"
+                >
+                  <span aria-hidden="true" className="rounded-lg ring-indigo-700 transition group-hover:ring-2">
+                    <DocumentImage id={d.id} variant="thumb" />
+                  </span>
+                  <span className="flex flex-col">
+                    <span className="text-[15px] font-semibold group-hover:text-indigo-700 group-hover:underline">{d.name}</span>
+                    <span className="text-sm text-gray-600">{d.meta}</span>
+                  </span>
+                </button>
+                <ValidityToggle label={d.name} value={v} onChange={(nv) => setDoc(d.id, nv)} />
               </li>
             );
           })}
@@ -118,7 +110,7 @@ export function Verify() {
             onClick={() => {
               update((s) => ({ ...s, outcome: 'sent-back' }));
               addLog('Sent back to the sales agent for KYC fixes');
-              navigate('queue');
+              navigate('details', 'documents');
             }}
           >
             Send back to sales agent
@@ -138,6 +130,9 @@ export function Verify() {
           {!ready && <span className="text-xs text-gray-600">{blockReason}</span>}
         </div>
       </StepFooter>
+      {viewing && (
+        <DocumentViewer id={viewing} docs={state.docs} onChange={setDoc} onNavigate={setViewing} onClose={() => setViewing(null)} />
+      )}
     </ApplicationLayout>
   );
 }

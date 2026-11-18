@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { initialState, loadState, ReviewContext, saveState, withLog, type ReviewContextValue, type ReviewState } from './review';
+import { initialState, loadState, ReviewContext, saveState, withCashLog, withLog, type ReviewContextValue, type ReviewState } from './review';
 
 export function ReviewProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ReviewState>(loadState);
   const stage = state.activation.stage;
+  const cashStage = state.cash.stage;
 
   useEffect(() => saveState(state), [state]);
 
@@ -17,8 +18,11 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
         }
         if (s.activation.stage === 'activating') {
           return withLog(
-            { ...s, outcome: 'activated', completed: [...s.completed, 'activate'], activation: { ...s.activation, stage: 'done' } },
-            `${s.activation.activateAs === 'loan' ? 'Loan' : 'Cash sale'} activated`,
+            withLog(
+              { ...s, outcome: 'activated', completed: [...s.completed, 'activate'], activation: { ...s.activation, stage: 'done' } },
+              `${s.activation.activateAs === 'loan' ? 'Loan' : 'Cash sale'} activated`,
+            ),
+            'Device unlocked',
           );
         }
         return s;
@@ -26,6 +30,21 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
     }, 2500);
     return () => clearTimeout(timer);
   }, [stage]);
+
+  // Same background jobs for the cash sale.
+  useEffect(() => {
+    if (cashStage !== 'creating' && cashStage !== 'activating') return;
+    const timer = setTimeout(() => {
+      setState((s) => {
+        if (s.cash.stage === 'creating') return withCashLog({ ...s, cash: { ...s.cash, stage: 'waiting' } }, 'Order created');
+        if (s.cash.stage === 'activating') {
+          return withCashLog({ ...s, cash: { ...s.cash, stage: 'done', completed: [...s.cash.completed, 'activate'] } }, 'Cash sale completed');
+        }
+        return s;
+      });
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [cashStage]);
 
   const value: ReviewContextValue = {
     state,

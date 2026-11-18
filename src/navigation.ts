@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
-export type Route = 'queue' | 'verify' | 'offer' | 'call' | 'decide' | 'activate' | 'details';
+export type Route = 'queue' | 'verify' | 'offer' | 'call' | 'decide' | 'activate' | 'details' | 'cash-device' | 'cash-activate' | 'cash-details';
 
-const ROUTES: Route[] = ['queue', 'verify', 'offer', 'call', 'decide', 'activate', 'details'];
+const ROUTES: Route[] = ['queue', 'verify', 'offer', 'call', 'decide', 'activate', 'details', 'cash-device', 'cash-activate', 'cash-details'];
 
 export interface Location {
   route: Route;
@@ -36,4 +36,9 @@ export function navigate(route: Route, sub?: string) {
 }
 
 // Where each application view was last left, so the view switch returns there.
-export const viewMemory: { flowStep: string | null; detailsTab: string } = { flowStep: null, detailsTab: 'overview' };
+export const viewMemory: { flowStep: string | null; detailsTab: string; cashFlowStep: string | null; cashDetailsTab: string } = {
+  flowStep: null,
+  detailsTab: 'overview',
+  cashFlowStep: null,
+  cashDetailsTab: 'overview',
+};

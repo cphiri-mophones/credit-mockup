@@ -1,6 +1,7 @@
 import { useLocation } from './navigation';
 import { Activate } from './screens/Activate';
 import { Call } from './screens/Call';
+import { CashActivate, CashDetails, CashDevice } from './screens/Cash';
 import { Decide } from './screens/Decide';
 import { Details } from './screens/Details';
 import { Offer } from './screens/Offer';
@@ -23,6 +24,12 @@ function Screen() {
       return <Decide />;
     case 'activate':
       return <Activate />;
+    case 'cash-device':
+      return <CashDevice />;
+    case 'cash-activate':
+      return <CashActivate />;
+    case 'cash-details':
+      return <CashDetails tab={sub} />;
     default:
       return <Queue />;
   }

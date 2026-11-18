@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { application, plans, type DocId, type PlanId } from '../data/application';
+import { application, cashCatalog, plans, type CashDeviceId, type DocId, type PlanId } from '../data/application';
 
 export type Step = 'verify' | 'offer' | 'call' | 'decide' | 'activate';
 export const STEPS: Step[] = ['verify', 'offer', 'call', 'decide', 'activate'];
@@ -9,6 +9,20 @@ export type CallOutcome = 'reached' | 'callback' | 'ended' | '';
 export type DecisionChoice = 'loan' | 'cash' | 'reject' | '';
 export type ActivationStage = 'none' | 'creating' | 'review' | 'waiting' | 'activating' | 'done';
 export type Outcome = 'in-progress' | 'sent-back' | 'callback' | 'rejected' | 'activated';
+
+export type CashStep = 'device' | 'activate';
+export const CASH_STEPS: CashStep[] = ['device', 'activate'];
+
+export interface CashState {
+  completed: CashStep[];
+  deviceId: CashDeviceId | '';
+  stage: ActivationStage;
+  payment: 'none' | 'full' | 'short';
+  payerMatches: boolean;
+  handedOver: boolean;
+  log: { at: string; text: string }[];
+  notes: { at: string; by: string; text: string }[];
+}
 
 export interface CallAnswers {
   proceed: string;
@@ -45,10 +59,11 @@ export interface ReviewState {
   risk: { finalScore: string; flag: string; previousLoans: string; highDepositOverride: string };
   offer: { planId: PlanId; deposit: 'normal' | 'high'; initialWeeks: number };
   call: CallAnswers;
-  decision: { choice: DecisionChoice; cashType: string; rejectReason: string; note: string; afterApproval: 'delivery' | 'sell-cash' };
-  activation: { stage: ActivationStage; paid: boolean; payerMatches: boolean; handedOver: boolean; locked: boolean; activateAs: 'loan' | 'cash' };
+  decision: { choice: DecisionChoice; cashType: string; rejectReason: string; note: string };
+  activation: { stage: ActivationStage; paid: boolean; payerMatches: boolean; handedOver: boolean; activateAs: 'loan' | 'cash' };
   log: { at: string; text: string }[];
   notes: { at: string; by: string; text: string }[];
+  cash: CashState;
 }
 
 export const initialState: ReviewState = {
@@ -84,14 +99,24 @@ export const initialState: ReviewState = {
     endReason: '',
     notes: '',
   },
-  decision: { choice: '', cashType: 'Credit', rejectReason: '', note: '', afterApproval: 'delivery' },
-  activation: { stage: 'none', paid: false, payerMatches: true, handedOver: false, locked: false, activateAs: 'loan' },
+  decision: { choice: '', cashType: 'Credit', rejectReason: '', note: '' },
+  activation: { stage: 'none', paid: false, payerMatches: true, handedOver: false, activateAs: 'loan' },
   log: [
     { at: '9 Nov, 11:07', text: 'Sales agent submitted the application' },
     { at: '9 Nov, 11:05', text: 'Next of kin consent verified' },
     { at: '9 Nov, 11:02', text: 'Consent code sent to next of kin' },
   ],
   notes: [],
+  cash: {
+    completed: [],
+    deviceId: '',
+    stage: 'none',
+    payment: 'none',
+    payerMatches: true,
+    handedOver: false,
+    log: [{ at: '16 Nov, 09:40', text: 'Sales agent submitted a cash application' }],
+    notes: [],
+  },
 };
 
 const STORAGE_KEY = 'credit-review-mockup:v1';
@@ -119,6 +144,28 @@ export function now(): string {
 
 export function withLog(s: ReviewState, text: string): ReviewState {
   return { ...s, log: [{ at: now(), text }, ...s.log] };
+}
+
+// Approving a cash offer converts the loan application into a cash one for good.
+export function isCashApplication(s: ReviewState): boolean {
+  return s.completed.includes('decide') && s.decision.choice === 'cash';
+}
+
+export function purchaseMode(s: ReviewState): 'Loan' | 'Cash' {
+  return isCashApplication(s) ? 'Cash' : 'Loan';
+}
+
+export function callAttempts(s: ReviewState): number {
+  return s.log.filter((e) => e.text.startsWith('Call back scheduled')).length + 1;
+}
+
+// A new attempt keeps the answers already given but needs its own consent to
+// proceed and its own outcome.
+export function startCallBack(s: ReviewState): ReviewState {
+  return withLog(
+    { ...s, outcome: 'in-progress', call: { ...s.call, proceed: '', outcome: '', callbackDate: '', callbackTime: '' } },
+    `Call back started (attempt ${callAttempts(s)})`,
+  );
 }
 
 export interface ReviewContextValue {
@@ -160,4 +207,16 @@ export function currentStep(state: ReviewState): Step {
 // The final risk score is optional; without an override the system CRB score stands.
 export function finalRiskScore(state: ReviewState): string {
   return state.risk.finalScore || application.crb.systemScore;
+}
+
+export function withCashLog(s: ReviewState, text: string): ReviewState {
+  return { ...s, cash: { ...s.cash, log: [{ at: now(), text }, ...s.cash.log] } };
+}
+
+export function cashDevice(state: ReviewState) {
+  return cashCatalog.find((d) => d.id === state.cash.deviceId) ?? null;
+}
+
+export function currentCashStep(state: ReviewState): CashStep {
+  return CASH_STEPS.find((s) => !state.cash.completed.includes(s)) ?? 'activate';
 }

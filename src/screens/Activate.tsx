@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { HandoverPhotos } from '../components/HandoverPhotos';
 import { ApplicationLayout, StepFooter } from '../components/layout';
+import { DocumentImage } from '../components/SampleDocs';
 import { Button, Card, CheckCircle, Chip, MockPanel, PendingCircle, Segmented, Spinner, Stat } from '../components/ui';
 import { application, kes } from '../data/application';
 import { navigate } from '../navigation';
-import { initialPayment, useReview } from '../state/review';
+import { initialPayment, isCashApplication, useReview } from '../state/review';
 
 export function Activate() {
   const { state, update, addLog } = useReview();
@@ -25,6 +27,7 @@ export function Activate() {
     );
   }
 
+  const cashOnly = isCashApplication(state);
   const orderReady = a.stage === 'waiting' || a.stage === 'activating' || a.stage === 'done';
   const payerOk = a.paid && (a.payerMatches || payerConfirmed);
   const checks = [
@@ -32,7 +35,6 @@ export function Activate() {
     { label: 'Initial payment', ok: a.paid, state: a.paid ? 'Received and verified' : 'Not received yet' },
     { label: 'Payer', ok: payerOk, state: !a.paid ? 'Shown after payment' : a.payerMatches ? 'Same as customer' : payerConfirmed ? 'Different, confirmed by you' : 'Different from customer' },
     { label: 'Hand-over code', ok: a.handedOver, state: a.handedOver ? 'Codes match' : 'Waiting for hand-over' },
-    { label: 'Device locked', ok: a.locked, state: a.locked ? 'Locked' : 'Not locked yet' },
   ];
   const ready = a.stage === 'waiting' && checks.every((c) => c.ok);
   const done = a.stage === 'done';
@@ -136,26 +138,26 @@ export function Activate() {
               <Stat label="Code entered at hand-over" value={a.handedOver ? '••••••' : 'Not entered yet'} />
               <Stat label="Codes match" value={a.handedOver ? 'Yes' : 'Waiting'} tone={a.handedOver ? 'green' : 'amber'} />
             </dl>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-bold">ID at hand-over next to the ID from Verify</span>
-              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                {['Front, at hand-over', 'Back, at hand-over', 'Front, from Verify', 'Back, from Verify'].map((label, i) => (
-                  <div key={label} className="flex flex-col gap-1">
-                    <div aria-hidden="true" className="flex h-20 items-center justify-center rounded-lg bg-gray-200 text-xs font-bold text-gray-700">
-                      {i < 2 && !a.handedOver ? 'Not taken' : 'ID photo'}
-                    </div>
-                    <span className="text-xs text-gray-600">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <HandoverPhotos
+              taken={a.handedOver}
+              holder={{ name: customer.name, idNumber: customer.idNumber, dob: '25.02.1997' }}
+              stamp={`Rider · ${[state.call.pickupDate, state.call.pickupTime].filter(Boolean).join(' ') || '16 Nov 2026 14:20'}`}
+              compare={[
+                { label: 'ID front, from Verify', image: <DocumentImage id="front" variant="full" /> },
+                { label: 'ID back, from Verify', image: <DocumentImage id="back" variant="full" /> },
+              ]}
+            />
           </Card>
 
-          <Card title="Device" actions={<Chip tone={a.locked ? 'green' : 'amber'}>{a.locked ? 'Locked' : 'Not locked'}</Chip>}>
+          <Card
+            title="Device"
+            description="Ops enrols and locks the device before hand-over. Activating the sale unlocks it; nothing to do here."
+            actions={<Chip tone={done ? 'green' : 'neutral'}>{done ? 'Unlocked' : 'Locked by ops'}</Chip>}
+          >
             <dl className="grid grid-cols-2 gap-4 md:grid-cols-3">
               <Stat label="IMEI / serial" value={a.handedOver ? device.imei : 'Assigned at hand-over'} />
               <Stat label="Device management" value={device.mdmProvider} />
-              <Stat label="Lock" value={a.locked ? 'Locked' : 'Not locked'} tone={a.locked ? 'green' : 'amber'} />
+              <Stat label="Lock" value={done ? 'Unlocked at activation' : 'Locked at enrolment'} tone={done ? 'green' : undefined} />
             </dl>
           </Card>
 
@@ -170,23 +172,28 @@ export function Activate() {
               <Button variant="secondary" disabled={a.handedOver} onClick={() => setActivation({ handedOver: true }, 'Rider completed the hand-over, codes match')}>
                 Rider hands over the phone
               </Button>
-              <Button variant="secondary" disabled={a.locked || !a.handedOver} onClick={() => setActivation({ locked: true }, 'Device locked')}>
-                Device locks
-              </Button>
             </MockPanel>
           )}
 
           <Card title="Activate" emphasis>
-            <Segmented
-              label="Activate as"
-              value={a.activateAs}
-              onChange={(v) => !done && setActivation({ activateAs: v as 'loan' | 'cash' })}
-              options={[
-                { value: 'loan', label: 'Loan' },
-                { value: 'cash', label: 'Cash sale' },
-              ]}
-              hint="Approved as a loan in Decide. Switch to cash sale only if the customer paid in full."
-            />
+            {cashOnly ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-gray-700">Activate as</span>
+                <span className="self-start rounded-lg border-2 border-indigo-700 bg-indigo-50 px-4 py-2.5 text-sm font-semibold">Cash sale</span>
+                <span className="text-xs text-gray-600">This is a cash application (converted in Decide), so it can only be activated as a cash sale.</span>
+              </div>
+            ) : (
+              <Segmented
+                label="Activate as"
+                value={a.activateAs}
+                onChange={(v) => !done && setActivation({ activateAs: v as 'loan' | 'cash' })}
+                options={[
+                  { value: 'loan', label: 'Loan' },
+                  { value: 'cash', label: 'Cash sale' },
+                ]}
+                hint="Approved as a loan in Decide. Switch to cash sale only if the customer paid the full price."
+              />
+            )}
             {a.stage === 'activating' && (
               <div className="flex items-center gap-3">
                 <Spinner />
@@ -213,7 +220,7 @@ export function Activate() {
           </>
         ) : (
           <>
-            {!ready && orderReady && <span className="text-sm text-gray-600">Activate unlocks when payment, payer, hand-over code and device lock are all in.</span>}
+            {!ready && orderReady && <span className="text-sm text-gray-600">Activate unlocks when payment, payer and hand-over code are all in.</span>}
             <Button variant="success" disabled={!ready} onClick={() => setActivation({ stage: 'activating' }, `Activation requested as ${saleLabel}`)}>
               Activate {saleLabel}
             </Button>

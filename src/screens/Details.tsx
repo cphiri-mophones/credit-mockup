@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { ApplicationLayout, Stepper } from '../components/layout';
+import { DocumentImage } from '../components/SampleDocs';
 import { Button, Card, CheckCircle, Chip, PendingCircle } from '../components/ui';
 import { application, details, documents, kes, plans } from '../data/application';
 import { navigate, viewMemory } from '../navigation';
-import { initialPayment, now, selectedPlan, useReview, type ReviewState, type Step } from '../state/review';
+import { initialPayment, now, purchaseMode, selectedPlan, startCallBack, useReview, type ReviewState, type Step } from '../state/review';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -101,7 +102,7 @@ function Overview({ state }: { state: ReviewState }) {
           items={[
             { label: 'Stage', value: stageLabel(state) },
             { label: 'Loan type', value: `${customer.loanType} · ${customer.saleType}` },
-            { label: 'Purchase mode', value: customer.purchaseMode },
+            { label: 'Purchase mode', value: purchaseMode(state) === 'Cash' ? 'Cash (converted from loan in Decide)' : 'Loan' },
             { label: 'Submitted', value: `${customer.submitted} by ${customer.salesAgent}` },
             { label: 'Channel', value: details.agentSubmitted.channel },
             { label: 'Application ID', value: application.id },
@@ -176,9 +177,7 @@ function Documents({ state }: { state: ReviewState }) {
           const v = state.docs[d.id];
           return (
             <div key={d.id} className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3">
-              <div aria-hidden="true" className="flex h-28 items-center justify-center rounded-md bg-gray-200 text-sm font-bold text-gray-700">
-                {d.thumb}
-              </div>
+              <DocumentImage id={d.id} variant="full" />
               <span className="text-sm font-semibold">{d.name}</span>
               <span className="text-xs text-gray-600">{d.meta}</span>
               <Chip tone={v === 'valid' ? 'green' : v === 'invalid' ? 'red' : 'amber'}>{v === 'valid' ? 'Valid' : v === 'invalid' ? 'Invalid' : 'Not marked'}</Chip>
@@ -351,7 +350,6 @@ function Decision({ state }: { state: ReviewState }) {
     { label: 'Order created', ok: a.stage === 'waiting' || a.stage === 'activating' || a.stage === 'done' },
     { label: 'Initial payment verified', ok: a.paid },
     { label: 'Hand-over code matched', ok: a.handedOver },
-    { label: 'Device locked', ok: a.locked },
     { label: 'Sale activated', ok: a.stage === 'done' },
   ];
   return (
@@ -361,7 +359,6 @@ function Decision({ state }: { state: ReviewState }) {
           <Fields
             items={[
               { label: 'Decision', value: d.choice === 'loan' ? 'Approve loan' : d.choice === 'cash' ? `Approve cash offer (${d.cashType})` : `Reject (${d.rejectReason})` },
-              { label: 'After approval', value: d.choice === 'reject' ? '—' : d.afterApproval === 'delivery' ? 'Deposit and delivery' : 'Sell cash' },
               { label: 'Note', value: d.note },
             ]}
           />
@@ -387,6 +384,7 @@ function Decision({ state }: { state: ReviewState }) {
             items={[
               { label: 'Device IMEI', value: a.handedOver ? application.device.imei : 'Assigned at hand-over' },
               { label: 'Device management', value: application.device.mdmProvider },
+              { label: 'Device lock', value: a.stage === 'done' ? 'Unlocked at activation' : 'Locked by ops at enrolment' },
               { label: 'Activated as', value: a.stage === 'done' ? (a.activateAs === 'loan' ? 'Loan' : 'Cash sale') : '—' },
             ]}
           />
@@ -459,6 +457,43 @@ function Raw({ state }: { state: ReviewState }) {
   );
 }
 
+function OutcomeBanner({ state }: { state: ReviewState }) {
+  const { update } = useReview();
+  const c = state.call;
+  const banner =
+    state.outcome === 'callback'
+      ? { tone: 'border-blue-200 bg-blue-50 text-blue-950', title: `Call back scheduled for ${c.callbackDate} ${c.callbackTime}`, text: 'The application moved to Call backs due. Answers so far are kept.' }
+      : state.outcome === 'rejected'
+        ? { tone: 'border-red-200 bg-red-50 text-red-950', title: `Rejected: ${state.decision.rejectReason}`, text: 'The application is closed. No SMS is sent for a rejection.' }
+        : state.outcome === 'sent-back'
+          ? { tone: 'border-amber-300 bg-amber-50 text-amber-950', title: 'Sent back to the sales agent', text: 'It comes back to Mine when the agent resubmits the fixed documents.' }
+          : null;
+  if (!banner) return null;
+  return (
+    <section role="status" className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${banner.tone}`}>
+      <div className="flex flex-col gap-0.5">
+        <h2 className="text-[15px] font-bold">{banner.title}</h2>
+        <p className="text-sm">{banner.text}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <a href="#/queue" className="text-sm font-semibold text-indigo-700">
+          Back to Credit work
+        </a>
+        {state.outcome === 'callback' && (
+          <Button
+            onClick={() => {
+              update(startCallBack);
+              navigate('call');
+            }}
+          >
+            Start call back
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function Details({ tab }: { tab: string }) {
   const { state } = useReview();
   const active: TabId = (TABS.find((t) => t.id === tab)?.id ?? 'overview') as TabId;
@@ -482,6 +517,7 @@ export function Details({ tab }: { tab: string }) {
   return (
     <ApplicationLayout view="details">
       <div className="flex flex-col gap-5">
+        <OutcomeBanner state={state} />
         <div role="tablist" aria-label="Application details" className="flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
           {TABS.map((t) => (
             <button

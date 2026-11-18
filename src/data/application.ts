@@ -79,10 +79,20 @@ export const documents = [
 
 export type DocId = (typeof documents)[number]['id'];
 
+// Illustrative rows: values other than Jeff Clooney's were not taken from Mo.OS.
 export const sampleQueueRows = [
-  { name: 'Sample applicant A', loan: 'First loan · 3P', stage: 'Call', next: 'Call back due 14:00', waiting: '2 hours' },
-  { name: 'Sample applicant B', loan: 'Second loan · 1P', stage: 'Decide', next: 'Approve, offer cash or reject', waiting: '1 day' },
-  { name: 'Sample applicant C', loan: 'First loan · 1P', stage: 'Waiting on system', next: 'Fate Guide still processing the statement', waiting: '20 minutes' },
+  {
+    name: 'Sample applicant A', idNumber: '2•••••41', phone: '2547•••••118', loan: 'First loan · 3P', stage: 'Call', next: 'Call back due 14:00', waiting: '2 hours',
+    callStatus: 'Not reached', fpm: 'F2', fateGuide: 'Green', product: 'Tecno Spark 20 Pro 128GB', seller: 'Partner shop 12', channel: 'Offline agent', location: 'Thika', agent: '118_Wanjiru', submitted: '14 Nov 2026', owner: 'You',
+  },
+  {
+    name: 'Sample applicant B', idNumber: '3•••••07', phone: '2547•••••562', loan: 'Second loan · 1P', stage: 'Decide', next: 'Approve, offer cash or reject', waiting: '1 day',
+    callStatus: 'OK reached', fpm: 'F1', fateGuide: 'Orange', product: 'Apple iPhone 13 Pro Max 512GB', seller: 'Mophones', channel: 'Online agent', location: 'Mophones shop', agent: '225_Terry', submitted: '15 Nov 2026', owner: 'You',
+  },
+  {
+    name: 'Sample applicant C', idNumber: '2•••••93', phone: '2547•••••730', loan: 'First loan · 1P', stage: 'Waiting on system', next: 'Fate Guide still processing the statement', waiting: '20 minutes',
+    callStatus: '', fpm: 'F4', fateGuide: '', product: 'Moto G Power (2023) 128GB', seller: 'Mophones', channel: 'Online agent', location: 'Kisumu', agent: '301_Otieno', submitted: '16 Nov 2026', owner: 'You',
+  },
 ];
 
 // Read-only detail seen on the old Mo.OS detail tabs for this application.
@@ -143,6 +153,35 @@ export const details = {
     defaultedLoan: 'No',
   },
 } as const;
+
+// A fictional cash application: cash sales skip scoring and the credit call.
+export const cashApplication = {
+  id: 'sample-cash-0001',
+  customer: {
+    name: 'Grace Atieno',
+    idNumber: '12345678',
+    phone: '254700000012',
+    salesAgent: '225_Terry',
+    submitted: '16 Nov 2026',
+    saleType: '1P',
+    channel: 'Mophones shop',
+    dob: '08.07.1994',
+  },
+  imei: '356789104455120',
+} as const;
+
+// Devices offered for a cash sale. Only the S23 Ultra price was seen in Mo.OS;
+// the others are illustrative.
+export const cashCatalog = [
+  { id: 's23u', name: 'Samsung Galaxy S23 Ultra 256GB', cashPrice: 56999, inStock: true, seen: true },
+  { id: 'ip13pm', name: 'Apple iPhone 13 Pro Max 512GB', cashPrice: 89999, inStock: true, seen: false },
+  { id: 'ip13p', name: 'Apple iPhone 13 Pro 256GB', cashPrice: 74999, inStock: false, seen: false },
+  { id: 'flip2', name: 'Tecno Phantom V Flip2 256GB', cashPrice: 49999, inStock: true, seen: false },
+  { id: 'spark20', name: 'Tecno Spark 20 Pro 128GB', cashPrice: 18499, inStock: true, seen: false },
+  { id: 'motog', name: 'Moto G Power (2023) 128GB', cashPrice: 17999, inStock: true, seen: false },
+] as const;
+
+export type CashDeviceId = (typeof cashCatalog)[number]['id'];
 
 export function kes(amount: number): string {
   return `KES ${amount.toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;

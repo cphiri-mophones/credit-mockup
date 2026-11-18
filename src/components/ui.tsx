@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Check, Copy } from 'lucide-react';
+import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'success' | 'ghost';
 
@@ -301,14 +302,37 @@ export function Stat({ label, value, tone }: { label: string; value: ReactNode; 
   );
 }
 
-export function MockPanel({ children }: { children: ReactNode }) {
+export function MockPanel({ children, note = 'Stand-ins for things that happen outside this screen (payment, rider, device management).' }: { children: ReactNode; note?: string }) {
   return (
     <aside className="flex flex-col gap-3 rounded-xl border-2 border-dashed border-amber-500 bg-amber-50 p-4">
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-bold uppercase tracking-wide text-amber-900">Mock only</span>
-        <span className="text-sm text-amber-900">Stand-ins for things that happen outside this screen (payment, rider, device management).</span>
+        <span className="text-sm text-amber-900">{note}</span>
       </div>
       <div className="flex flex-wrap gap-2">{children}</div>
     </aside>
+  );
+}
+
+export function CopyButton({ value, label, size = 'md' }: { value: string; label: string; size?: 'sm' | 'md' }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    void navigator.clipboard?.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  const Icon = copied ? Check : Copy;
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={`Copy ${label}`}
+      className={`inline-flex flex-none items-center gap-1 rounded-md border font-semibold ${copied ? 'border-green-300 bg-green-50 text-green-800' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'} ${
+        size === 'sm' ? 'min-h-7 px-2 text-xs' : 'min-h-9 px-2.5 text-xs'
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+    </button>
   );
 }

@@ -1,5 +1,5 @@
 import { ApplicationLayout, StepFooter } from '../components/layout';
-import { Button, Card, ChoiceCards, Segmented, SelectField, TextArea } from '../components/ui';
+import { Button, Card, ChoiceCards, SelectField, TextArea } from '../components/ui';
 import { application, kes } from '../data/application';
 import { navigate, type Route } from '../navigation';
 import { finalRiskScore, initialPayment, selectedPlan, useReview, type DecisionChoice } from '../state/review';
@@ -30,8 +30,8 @@ export function Decide() {
   const set = (patch: Partial<typeof d>) => update((s) => ({ ...s, decision: { ...s.decision, ...patch } }));
 
   const choices: { value: Exclude<DecisionChoice, ''>; label: string; help: string }[] = [
-    { value: 'loan', label: 'Approve loan', help: 'On the offer above' },
-    { value: 'cash', label: 'Approve cash offer', help: 'Customer buys for cash instead' },
+    { value: 'loan', label: 'Approve loan', help: 'Deposit and delivery on the offer above, then activation' },
+    { value: 'cash', label: 'Approve cash offer', help: 'Customer pays the full price, then activation' },
     { value: 'reject', label: 'Reject', help: 'Ends the application with a reason' },
   ];
 
@@ -42,14 +42,14 @@ export function Decide() {
     if (d.choice === 'reject') {
       update((s) => ({ ...s, outcome: 'rejected' }));
       completeStep('decide', `Rejected: ${d.rejectReason}`);
-      navigate('queue');
+      navigate('details', 'decision');
       return;
     }
     update((s) => ({
       ...s,
-      activation: { ...s.activation, stage: 'creating', activateAs: d.choice === 'cash' || d.afterApproval === 'sell-cash' ? 'cash' : 'loan' },
+      activation: { ...s.activation, stage: 'creating', activateAs: d.choice === 'cash' ? 'cash' : 'loan' },
     }));
-    completeStep('decide', d.choice === 'cash' ? `Cash offer approved (${d.cashType})` : 'Loan approved, order requested');
+    completeStep('decide', d.choice === 'cash' ? `Cash offer approved (${d.cashType}), converted to a cash application` : 'Loan approved, order requested');
     addLog('Order creation started');
     navigate('activate');
   };
@@ -93,17 +93,19 @@ export function Decide() {
         {d.choice === 'reject' && (
           <SelectField label="Reason" required value={d.rejectReason} onChange={(v) => set({ rejectReason: v })} options={['Not on terms', 'Not ready', 'Other suitable credit', 'Lost', 'No data consent', 'Out of zone', 'Impersonation']} />
         )}
+        {d.choice === 'cash' && (
+          <div role="alert" className="flex flex-col gap-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            <strong>This converts the application to a cash application.</strong>
+            <span>
+              The loan offer is dropped and the customer pays the full cash price of {kes(application.product.cashPrice)}. It can then only be activated as a cash sale, not as a
+              loan.
+            </span>
+          </div>
+        )}
         {d.choice !== '' && d.choice !== 'reject' && (
-          <Segmented
-            label="After approval"
-            value={d.afterApproval}
-            onChange={(v) => set({ afterApproval: v as 'delivery' | 'sell-cash' })}
-            options={[
-              { value: 'delivery', label: 'Deposit and delivery' },
-              { value: 'sell-cash', label: 'Sell cash' },
-            ]}
-            hint="Uses the pick-up details from the call. The order and delivery are created together as soon as you approve."
-          />
+          <p className="text-sm text-gray-600">
+            The order and delivery are created as soon as you approve, using the pick-up details from the call. You go straight to activation.
+          </p>
         )}
         <TextArea label={d.choice === 'reject' ? 'Note (required for a rejection)' : 'Note (optional)'} required={d.choice === 'reject'} value={d.note} onChange={(v) => set({ note: v })} />
       </Card>
@@ -116,7 +118,7 @@ export function Decide() {
           </Button>
         ) : (
           <Button variant={d.choice === 'reject' ? 'danger' : 'primary'} disabled={!ready} onClick={submit}>
-            {d.choice === 'reject' ? 'Reject application' : d.choice === 'cash' ? 'Approve cash offer' : 'Approve and create order'}
+            {d.choice === 'reject' ? 'Reject application' : d.choice === 'cash' ? 'Convert to cash and approve' : 'Approve and create order'}
           </Button>
         )}
       </StepFooter>
