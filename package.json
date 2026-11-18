@@ -7,10 +7,16 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:push": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs push"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@siteping/adapter-drizzle": "^0.2.4",
+    "@siteping/server": "^0.2.4",
+    "@siteping/widget": "^0.12.5",
     "@tailwindcss/vite": "^4.1.11",
+    "drizzle-orm": "^0.45.4",
     "lucide-react": "^0.503.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -18,9 +24,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",

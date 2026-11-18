@@ -1,3 +1,4 @@
+import { Feedback } from './components/Feedback';
 import { useLocation } from './navigation';
 import { Activate } from './screens/Activate';
 import { Call } from './screens/Call';
@@ -39,6 +40,7 @@ export default function App() {
   return (
     <ReviewProvider>
       <Screen />
+      <Feedback />
     </ReviewProvider>
   );
 }

@@ -83,3 +83,11 @@ These differ from the current flow and need a decision before building:
 The KYC documents (ID front and back, selfie, M-Pesa statement, next of kin) are illustrated sample images drawn in `src/components/SampleDocs.tsx`, watermarked SAMPLE.
 
 Figures for MoSaver and MoStandard 25 were not seen in Mo.OS, so those plans show "Figures not in the mock data".
+
+## Comments on the design
+
+Reviewers pin comments to the page with [SitePing](https://github.com/NeosiaNexus/SitePing). The round button at the bottom left opens it: draw a box over an element, pick a type and write the comment. Others see the pin and can reply in a thread. Pins belong to the screen they were left on (`#/call`, `#/details/crb`…), so a pin on Call doesn't show on Decide.
+
+- **Storage:** Turso, through the `MAIN_JUICE_TURSO_DATABASE_URL` and `MAIN_JUICE_TURSO_AUTH_TOKEN` env vars from the Vercel integration. `npm run db:push` creates the three `siteping_*` tables (schema in `server/schema.ts`).
+- **API:** `api/siteping.ts` runs as a Vercel Function at `/api/siteping`. `npm run dev` serves the same handler through a small Vite middleware, so local and deployed behave alike. Run `vercel env pull .env.local` first.
+- **Who can do what:** anyone with the link can read, pin and reply. Resolving and deleting need `SITEPING_API_KEY` as a bearer token, so the widget hides those buttons. Production refuses to start the API without that key set.
