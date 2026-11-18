@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
+// Comment links from the admin inbox open /<route>?siteping=<id>, but the app routes by hash.
+if (window.location.pathname !== '/' && !window.location.hash) {
+  window.history.replaceState(null, '', `/${window.location.search}#${window.location.pathname}`)
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

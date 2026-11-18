@@ -13,6 +13,7 @@
   "dependencies": {
     "@libsql/client": "^0.18.0",
     "@siteping/adapter-drizzle": "^0.2.4",
+    "@siteping/dashboard": "^0.3.2",
     "@siteping/server": "^0.2.4",
     "@siteping/widget": "^0.12.5",
     "@tailwindcss/vite": "^4.1.11",

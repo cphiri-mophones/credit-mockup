@@ -86,8 +86,11 @@ Figures for MoSaver and MoStandard 25 were not seen in Mo.OS, so those plans sho
 
 ## Comments on the design
 
-Reviewers pin comments to the page with [SitePing](https://github.com/NeosiaNexus/SitePing). The round button at the bottom left opens it: draw a box over an element, pick a type and write the comment. Others see the pin and can reply in a thread. Pins belong to the screen they were left on (`#/call`, `#/details/crb`…), so a pin on Call doesn't show on Decide.
+Reviewers pin comments to the page with [SitePing](https://github.com/NeosiaNexus/SitePing). The round button at the bottom right opens it: draw a box over an element, pick a type and write the comment. Others see the pin and can reply in a thread. Pins belong to the screen they were left on (`#/call`, `#/details/crb`…), so a pin on Call doesn't show on Decide.
+
+**Admin inbox** (`#/admin`): lists every comment with search and filters, and lets you change status (open, in progress, resolved, won't fix), reply as "MoPhones team", delete, and jump to the comment on its page. Sign in with `SITEPING_API_KEY`; the browser keeps an HttpOnly session cookie for 30 days, so the key itself never sits in the page. Signed-in admins also get Resolve and Delete in the widget on the mockup itself.
 
 - **Storage:** Turso, through the `MAIN_JUICE_TURSO_DATABASE_URL` and `MAIN_JUICE_TURSO_AUTH_TOKEN` env vars from the Vercel integration. `npm run db:push` creates the three `siteping_*` tables (schema in `server/schema.ts`).
-- **API:** `api/siteping.ts` runs as a Vercel Function at `/api/siteping`. `npm run dev` serves the same handler through a small Vite middleware, so local and deployed behave alike. Run `vercel env pull .env.local` first.
-- **Who can do what:** anyone with the link can read, pin and reply. Resolving and deleting need `SITEPING_API_KEY` as a bearer token, so the widget hides those buttons. Production refuses to start the API without that key set.
+- **API:** each `api/*.ts` runs as a Vercel Function: `/api/siteping` for comments and `/api/admin-session` for admin sign-in. `npm run dev` serves the same handlers through a small Vite middleware, so local and deployed behave alike. Run `vercel env pull .env.local` first.
+- **Who can do what:** anyone with the link can read, pin and reply, and delete their own pins and replies. Ownership is the email the reviewer typed into the widget, sent as an `X-Reviewer-Email` header and matched against the comment's author email. It isn't verified, which is fine for an internal tool. Deleting your own pin also deletes the replies under it. Changing status, and deleting other people's comments, need an admin: either the session cookie or `Authorization: Bearer <SITEPING_API_KEY>` for scripts. Reviewer emails are only shown to admins.
+- **Links to a comment** open `/<screen>?siteping=<id>`. `vercel.json` sends those paths to the app, which turns them back into its `#/<screen>` route.

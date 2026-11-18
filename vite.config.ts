@@ -4,14 +4,16 @@ import tailwindcss from '@tailwindcss/vite'
 
 type MethodHandler = (request: Request) => Response | Promise<Response>
 
-// On Vercel, api/siteping.ts runs as a function. `vite dev` doesn't serve api/, so this runs the same handler locally.
-function sitepingDevApi(): Plugin {
+// On Vercel, each api/<name>.ts runs as a function. `vite dev` doesn't serve api/, so this runs the same handlers locally.
+function devApi(): Plugin {
   return {
-    name: 'siteping-dev-api',
+    name: 'dev-api',
     configureServer(server) {
       Object.assign(process.env, loadEnv(server.config.mode, process.cwd(), ''))
-      server.middlewares.use('/api/siteping', async (req, res) => {
-        const handlers: Record<string, MethodHandler | undefined> = await server.ssrLoadModule('/api/siteping.ts')
+      server.middlewares.use('/api', async (req, res, next) => {
+        const name = new URL(req.url ?? '/', 'http://localhost').pathname.slice(1)
+        if (!/^[a-z-]+$/.test(name)) return next()
+        const handlers: Record<string, MethodHandler | undefined> = await server.ssrLoadModule(`/api/${name}.ts`)
         const handler = handlers[req.method ?? 'GET']
         if (!handler) {
           res.statusCode = 405
@@ -38,5 +40,5 @@ function sitepingDevApi(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), sitepingDevApi()],
+  plugins: [react(), tailwindcss(), devApi()],
 })

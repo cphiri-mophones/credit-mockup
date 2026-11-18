@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
-export type Route = 'queue' | 'verify' | 'offer' | 'call' | 'decide' | 'activate' | 'details' | 'cash-device' | 'cash-activate' | 'cash-details';
+export type Route = 'queue' | 'verify' | 'offer' | 'call' | 'decide' | 'activate' | 'details' | 'cash-device' | 'cash-activate' | 'cash-details' | 'admin';
 
-const ROUTES: Route[] = ['queue', 'verify', 'offer', 'call', 'decide', 'activate', 'details', 'cash-device', 'cash-activate', 'cash-details'];
+const ROUTES: Route[] = ['queue', 'verify', 'offer', 'call', 'decide', 'activate', 'details', 'cash-device', 'cash-activate', 'cash-details', 'admin'];
 
 export interface Location {
   route: Route;

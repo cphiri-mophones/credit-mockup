@@ -1,6 +1,7 @@
 import { Feedback } from './components/Feedback';
 import { useLocation } from './navigation';
 import { Activate } from './screens/Activate';
+import { Admin } from './screens/Admin';
 import { Call } from './screens/Call';
 import { CashActivate, CashDetails, CashDevice } from './screens/Cash';
 import { Decide } from './screens/Decide';
@@ -31,16 +32,19 @@ function Screen() {
       return <CashActivate />;
     case 'cash-details':
       return <CashDetails tab={sub} />;
+    case 'admin':
+      return <Admin />;
     default:
       return <Queue />;
   }
 }
 
 export default function App() {
+  const { route } = useLocation();
   return (
     <ReviewProvider>
       <Screen />
-      <Feedback />
+      {route !== 'admin' && <Feedback />}
     </ReviewProvider>
   );
 }
